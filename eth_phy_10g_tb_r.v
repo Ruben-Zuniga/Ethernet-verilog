@@ -7,7 +7,7 @@ module eth_phy_10g_tb_r;
     parameter DATA_WIDTH = 64;
     parameter CTRL_WIDTH = (DATA_WIDTH/8);
     parameter HDR_WIDTH = 2;
-    parameter PRBS31_ENABLE = 1; // Habilitar generación de PRBS31
+    parameter PRBS31_ENABLE = 0; // Habilitar generación de PRBS31
 
     // Definición de señales
     reg rx_clk, rx_rst, tx_clk, tx_rst;
@@ -24,7 +24,8 @@ module eth_phy_10g_tb_r;
     wire [6:0] rx_error_count;
     wire rx_bad_block, rx_sequence_error, rx_block_lock, rx_high_ber, rx_status;
     reg cfg_tx_prbs31_enable, cfg_rx_prbs31_enable;
-
+    
+	
     // Instanciación del módulo bajo prueba
     eth_phy_10g #(
         .DATA_WIDTH(DATA_WIDTH),
@@ -62,19 +63,29 @@ module eth_phy_10g_tb_r;
     always #5 tx_clk = ~tx_clk;
     
     // Loopback
-    always @ (posedge rx_clk) begin
-	//serdes_rx_data <= serdes_tx_data & {{DATA_WIDTH-32{1'b1}},{32{1'b0}}};
-    	serdes_rx_data <= serdes_tx_data;
-	serdes_rx_hdr <= serdes_tx_hdr;
+    always @* begin    
+	//always @ (posedge rx_clk) begin
+	
+		//serdes_rx_data <= serdes_tx_data & {{DATA_WIDTH-32{1'b1}},{32{1'b0}}};
+		serdes_rx_data <= serdes_tx_data;
+		serdes_rx_hdr <= serdes_tx_hdr;
+		
     end
     
     // Testbench stimulus
     initial begin
         $dumpfile("eth_phy_10g_tb_r.vcd");
         $dumpvars(0, eth_phy_10g_tb_r);
+        
         // Habilitar generación PRBS31 para transmisión y recepción
-        cfg_tx_prbs31_enable = 1;
-        cfg_rx_prbs31_enable = 1;
+        if(PRBS31_ENABLE) begin
+			cfg_tx_prbs31_enable = 1;
+			cfg_rx_prbs31_enable = 1;
+		end else begin
+			cfg_tx_prbs31_enable = 0;
+			cfg_rx_prbs31_enable = 0;
+		end
+		
         rx_clk = 0;
         tx_clk = 0;
         rx_rst = 1;
@@ -82,7 +93,7 @@ module eth_phy_10g_tb_r;
         
     	//serdes_rx_hdr = 2'b10;
     	
-        #50
+        #55
         rx_rst = 0;
         tx_rst = 0;
 
@@ -90,11 +101,49 @@ module eth_phy_10g_tb_r;
         //#100
 
         // Monitoreo
-	    $display("time\t rx_error_count\t xgmii_rxd\t\t serdes_tx_data\t\t serdes_rx_data\t\t tx_hdr\t rx_hdr");
-	    $monitor("%g\t %h\t\t %h\t %h\t %h\t %b\t %b", $time, rx_error_count, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
-        #300; // Imprimir cada ciclo de clock
+        if (PRBS31_ENABLE) begin
+			$display("time\t rx_error_count\t xgmii_rxd\t\t serdes_tx_data\t\t serdes_rx_data\t\t tx_hdr\t rx_hdr");
+			$monitor("%g\t %h\t\t %h\t %h\t %h\t %b\t %b", $time, rx_error_count, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
+		end else begin
+			$display("time\t xgmii_txd\t xgmii_rxd\t\t serdes_tx_data\t\t serdes_rx_data\t\t tx_hdr\t rx_hdr");
+			$monitor("%g\t %h\t %h\t %h\t %h\t %b\t %b", $time, xgmii_txd, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
+		end
+		
+		// Ejemplo de payload
+		     xgmii_txc = {CTRL_WIDTH{1'b0}};
+		     xgmii_txd = 64'h1e00000000000000;
+		#10  xgmii_txd = 64'h78555555555555d5;
+		#10  xgmii_txd = 64'h0800207705380e8b;
+		#10  xgmii_txd = 64'h0000000008004500;
+		#10  xgmii_txd = 64'h00281c6600001b06;
+		#10  xgmii_txd = 64'h9ed70000594d0000;
+		#10  xgmii_txd = 64'h68d139284aeb0000;
+		#10  xgmii_txd = 64'h307700007a0c5012;
+		#10  xgmii_txd = 64'h1ed2628400000000;
+		#10  xgmii_txd = 64'h0000000093ebf779;
+		#10  xgmii_txd = 64'h78555555555555d5;
+		#10  xgmii_txd = 64'h0800207705380e8b;
+		#10  xgmii_txd = 64'h0000000008004500;
+		#10  xgmii_txd = 64'h00281c6600001b06;
+		#10  xgmii_txd = 64'h9ed70000594d0000;
+		#10  xgmii_txd = 64'h68d139284aeb0000;
+		#10  xgmii_txd = 64'h307700007a0c5012;
+		#10  xgmii_txd = 64'h1ed2628400000000;
+		#10  xgmii_txd = 64'h0000000093ebf779;
+		#10  xgmii_txd = 64'h78555555555555d5;
+		#10  xgmii_txd = 64'h0800207705380e8b;
+		#10  xgmii_txd = 64'h0000000008004500;
+		#10  xgmii_txd = 64'h00281c6600001b06;
+		#10  xgmii_txd = 64'h9ed70000594d0000;
+		#10  xgmii_txd = 64'h68d139284aeb0000;
+		#10  xgmii_txd = 64'h307700007a0c5012;
+		#10  xgmii_txd = 64'h1ed2628400000000;
+		#10  xgmii_txd = 64'h0000000093ebf779;
+		#10 xgmii_txd = 64'h8700000000000000;
+		#50
+		// Imprimir cada ciclo de clock
+        //#300;
 
-        // Finalizar simulación
         $finish;
     end
 
