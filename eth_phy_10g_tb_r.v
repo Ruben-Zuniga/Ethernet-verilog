@@ -64,7 +64,7 @@ module eth_phy_10g_tb_r;
     // Loopback
     always @ (posedge rx_clk) begin
 	//serdes_rx_data <= serdes_tx_data & {{DATA_WIDTH-32{1'b1}},{32{1'b0}}};
-    serdes_rx_data <= serdes_tx_data;
+    	serdes_rx_data <= serdes_tx_data;
 	serdes_rx_hdr <= serdes_tx_hdr;
     end
     
