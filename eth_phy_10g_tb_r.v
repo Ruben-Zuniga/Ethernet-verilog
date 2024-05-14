@@ -109,7 +109,7 @@ module eth_phy_10g_tb_r;
 			$monitor("%g\t %h\t %h\t %h\t %h\t %b\t %b", $time, xgmii_txd, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
 		end
 		
-		// Ejemplo de payload
+		// Ejemplo de payload extraido del pdf de PCS
 		     xgmii_txc = {CTRL_WIDTH{1'b0}};
 		     xgmii_txd = 64'h1e00000000000000;
 		#10  xgmii_txd = 64'h78555555555555d5;
@@ -139,7 +139,7 @@ module eth_phy_10g_tb_r;
 		#10  xgmii_txd = 64'h307700007a0c5012;
 		#10  xgmii_txd = 64'h1ed2628400000000;
 		#10  xgmii_txd = 64'h0000000093ebf779;
-		#10 xgmii_txd = 64'h8700000000000000;
+		#10  xgmii_txd = 64'h8700000000000000;
 		#50
 		// Imprimir cada ciclo de clock
         //#300;
