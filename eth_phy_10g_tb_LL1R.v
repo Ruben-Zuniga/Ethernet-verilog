@@ -90,6 +90,7 @@ module eth_phy_10g_LL1R;
     integer i;
     integer j;
 
+    // Alternar XGMII con los distintos patrones
     always @(posedge tx_clk) begin
         if (!tx_rst) begin
             for (i = 0; i < 6; i = i + 1) begin
@@ -124,19 +125,16 @@ module eth_phy_10g_LL1R;
         tx_rst = 1;
     	
         // Inicializar XGMII
-        //xgmii_txd = {test_patterns[5],8'h1E};
         xgmii_txd = {test_patterns[0]};
         xgmii_txc = 8'h00;
 
         #10
         rx_rst = 0;
         tx_rst = 0;
-/*
-        xgmii_txc = {CTRL_WIDTH{1'b1}};
-        xgmii_txd = 64'hFEFEFEFEFEFEFEFE;
-*/
-	    $monitor("%g\t %h\t %h\t %h\t %h\t %b\t %b", $time, xgmii_txd, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
-        #1000; // Imprimir cada ciclo de clock
+
+	// Imprimir cada ciclo de clock
+	$monitor("%g\t %h\t %h\t %h\t %h\t %b\t %b", $time, xgmii_txd, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
+        #1000;
 
         $finish;
     end
