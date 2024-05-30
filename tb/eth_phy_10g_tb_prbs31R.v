@@ -1,7 +1,10 @@
-`timescale 1ns / 1ps
 `include "eth_phy_10g.v"
 
-module eth_phy_10g_tb_r;
+`resetall
+`timescale 1us / 100ns
+`default_nettype none
+
+module eth_phy_10g_tb_prbs31R;
 
     // Parámetros del módulo
     parameter DATA_WIDTH = 64;
@@ -25,6 +28,47 @@ module eth_phy_10g_tb_r;
     wire rx_bad_block, rx_sequence_error, rx_block_lock, rx_high_ber, rx_status;
     reg cfg_tx_prbs31_enable, cfg_rx_prbs31_enable;
 
+    // Clock generation
+    always #5 rx_clk = ~rx_clk;
+    always #5 tx_clk = ~tx_clk;
+    
+    // Loopback
+    always @ (posedge rx_clk) begin
+	//serdes_rx_data <= serdes_tx_data & {{DATA_WIDTH-32{1'b1}},{32{1'b0}}};
+    	serdes_rx_data <= serdes_tx_data;
+	serdes_rx_hdr <= serdes_tx_hdr;
+    end
+    
+    // Testbench stimulus
+    initial begin
+	    $dumpfile("eth_phy_10g_tb_prbs31R.vcd");
+	    $dumpvars(0, eth_phy_10g_tb_prbs31R);
+        // Habilitar generación PRBS31 para transmisión y recepción
+        cfg_tx_prbs31_enable = 1;
+        cfg_rx_prbs31_enable = 1;
+        rx_clk = 0;
+        tx_clk = 0;
+        rx_rst = 1;
+        tx_rst = 1;
+        
+    	//serdes_rx_hdr = 2'b10;
+    	
+        #50
+        rx_rst = 0;
+        tx_rst = 0;
+
+        // Esperar un tiempo para estabilización
+        //#100
+
+        // Monitoreo
+	    $display("time\t rx_error_count\t xgmii_rxd\t\t serdes_tx_data\t\t serdes_rx_data\t\t tx_hdr\t rx_hdr");
+	    $monitor("%g\t %h\t\t %h\t %h\t %h\t %b\t %b", $time, rx_error_count, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
+        #300; // Imprimir cada ciclo de clock
+
+        // Finalizar simulación
+        $finish;
+    end
+	
     // Instanciación del módulo bajo prueba
     eth_phy_10g #(
         .DATA_WIDTH(DATA_WIDTH),
@@ -56,46 +100,5 @@ module eth_phy_10g_tb_r;
         .cfg_tx_prbs31_enable(cfg_tx_prbs31_enable),
         .cfg_rx_prbs31_enable(cfg_rx_prbs31_enable)
     );
-
-    // Clock generation
-    always #5 rx_clk = ~rx_clk;
-    always #5 tx_clk = ~tx_clk;
-    
-    // Loopback
-    always @ (posedge rx_clk) begin
-	//serdes_rx_data <= serdes_tx_data & {{DATA_WIDTH-32{1'b1}},{32{1'b0}}};
-    	serdes_rx_data <= serdes_tx_data;
-	serdes_rx_hdr <= serdes_tx_hdr;
-    end
-    
-    // Testbench stimulus
-    initial begin
-        $dumpfile("eth_phy_10g_tb_r.vcd");
-        $dumpvars(0, eth_phy_10g_tb_r);
-        // Habilitar generación PRBS31 para transmisión y recepción
-        cfg_tx_prbs31_enable = 1;
-        cfg_rx_prbs31_enable = 1;
-        rx_clk = 0;
-        tx_clk = 0;
-        rx_rst = 1;
-        tx_rst = 1;
-        
-    	//serdes_rx_hdr = 2'b10;
-    	
-        #50
-        rx_rst = 0;
-        tx_rst = 0;
-
-        // Esperar un tiempo para estabilización
-        //#100
-
-        // Monitoreo
-	    $display("time\t rx_error_count\t xgmii_rxd\t\t serdes_tx_data\t\t serdes_rx_data\t\t tx_hdr\t rx_hdr");
-	    $monitor("%g\t %h\t\t %h\t %h\t %h\t %b\t %b", $time, rx_error_count, xgmii_rxd, serdes_tx_data, serdes_rx_data, serdes_tx_hdr, serdes_rx_hdr);
-        #300; // Imprimir cada ciclo de clock
-
-        // Finalizar simulación
-        $finish;
-    end
 
 endmodule
