@@ -116,7 +116,7 @@ module eth_phy_10g_LL1R;
             #40;
         end
     */
-	    $display("Finalizado. Tiempo de ejecucion: %0t ps", $realtime);
+	    $display("Finalizado. Tiempo de simulacion: %0t ps", $realtime);
         $finish;
     end
     
