@@ -54,8 +54,8 @@ module eth_phy_10g_tb;
     // Definir prueba. COLOCAR UNO PARA LOS DATOS Y UNO PARA LOS HEADERS
     //----------------------------
     
-    `define RANDOM_DATA
-    `define STRONGLY_CORRUPTED
+    `define FIXED_DATA
+    `define VALID_HDR
     
     /*
     Datos:
