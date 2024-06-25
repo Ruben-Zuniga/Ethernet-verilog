@@ -55,7 +55,7 @@ module eth_phy_10g_tb;
     //----------------------------
     
     `define FIXED_DATA
-    `define VALID_HDR
+    `define STRONGLY_CORRUPTED
     
     /*
     Datos:
@@ -136,21 +136,14 @@ module eth_phy_10g_tb;
         reg [DATA_WIDTH-1:0] test_pattern [0:5];
     
         initial begin
-            test_pattern[0] = 64'h0707070707070707; // Todos 1
-            test_pattern[1] = 64'h0707070707070707; // Todos 0
-            test_pattern[2] = 64'h0707070707070707; // Alternar 01s
-            test_pattern[3] = 64'h0707070707070707; // Alternar 10s
-            test_pattern[4] = 64'h0707070707070707; // Todos Error
-            test_pattern[5] = 64'h0707070707070707; // Todos Idle
-        end
-        /*
-        test_pattern[0] = 64'hFFFFFFFFFFFFFFFF; // Todos 1
+            test_pattern[0] = 64'hFFFFFFFFFFFFFFFF; // Todos 1
             test_pattern[1] = 64'h0000000000000000; // Todos 0
             test_pattern[2] = 64'h5555555555555555; // Alternar 01s
             test_pattern[3] = 64'hAAAAAAAAAAAAAAAA; // Alternar 10s
             test_pattern[4] = 64'hFEFEFEFEFEFEFEFE; // Todos Error
             test_pattern[5] = 64'h0707070707070707; // Todos Idle
-        */
+        end
+        
         // Asignar patrones a la entrada
         always @(posedge tx_clk) begin
             if (!tx_rst) begin
@@ -218,26 +211,29 @@ module eth_phy_10g_tb;
         tx_rst = 1;
         
         // Inicializar XGMII
-        //  XGMII_TXC = 8'h00: Datos
-        //  XGMII_TXC = 8'hFF: Control
         xgmii_txd = test_pattern[0];
-        xgmii_txc = 8'h00;
+        xgmii_txc = 8'hFF;  // Control
+        //xgmii_txc = 8'h00;  // Datos 
         
         #10
         rx_rst = 0;
         tx_rst = 0;
         
-        //#2400;
+        `ifdef VALID_HDR
+            #2400;
         
-        `ifdef LIGHTLY_CORRUPTED
+        `elsif INVALID_HDR
+            #2400;
+        
+        `elsif LIGHTLY_CORRUPTED
             
             // Forzar errores de header cada cierto tiempo
             for (i = 0; i < 6; i = i + 1) begin 
                 
                 if(rx_block_lock) begin
                     serdes_rx_hdr = 2'b00;
-                    #1000;
                 end
+                #500;
                 
             end
             
