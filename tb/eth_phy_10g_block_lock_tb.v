@@ -9,20 +9,29 @@ module eth_phy_10g_block_lock_tb;
     //----------------------------
     // Parametros del modulo
     //----------------------------
-    parameter   DATA_WIDTH = 64;
-    parameter   CTRL_WIDTH = (DATA_WIDTH/8);
-    parameter   HDR_WIDTH = 2;
-    parameter   BIT_REVERSE = 0;
-    parameter   SCRAMBLER_DISABLE = 0;
-    parameter   PRBS31_ENABLE = 0;
-    parameter   TX_SERDES_PIPELINE = 0;
-    parameter   RX_SERDES_PIPELINE = 0;
+    parameter   DATA_WIDTH          = 64;
+    parameter   CTRL_WIDTH          = (DATA_WIDTH/8);
+    parameter   HDR_WIDTH           = 2;
+    parameter   BIT_REVERSE         = 0;
+    parameter   SCRAMBLER_DISABLE   = 0;
+    parameter   PRBS31_ENABLE       = 0;
+    parameter   TX_SERDES_PIPELINE  = 0;
+    parameter   RX_SERDES_PIPELINE  = 0;
     parameter   BITSLIP_HIGH_CYCLES = 1;
-    parameter   BITSLIP_LOW_CYCLES = 8;
-    parameter   COUNT_125US = 125;
+    parameter   BITSLIP_LOW_CYCLES  = 8;
+    parameter   COUNT_125US         = 125;
 
     //----------------------------
-    // SeÃ±ales
+    // Parametros del testbench
+    //----------------------------
+    `define CASE_6
+    integer BER = 25;
+    integer BER_RANGE = 1000;    // BER = 2,5e-2
+    integer invalid_chance;
+    integer i;
+
+    //----------------------------
+    // Puertos
     //----------------------------
 
     // Clocks y resets
@@ -57,16 +66,15 @@ module eth_phy_10g_block_lock_tb;
     
     // Contadores
     wire [6:0] rx_error_count;
-    reg [3:0] ber_count;
-    reg [5:0] sh_cnt;
-    reg [3:0] sh_invalid_cnt;
+    reg  [3:0] ber_count;
+    reg  [5:0] sh_cnt;
+    reg  [3:0] sh_invalid_cnt;
     
     // PRBS31
     reg cfg_tx_prbs31_enable, cfg_rx_prbs31_enable;
     
     // Patrones de entrada
     reg [63:0] test_patterns [0:5];
-    
 
     //----------------------------
     // Asignaciones
@@ -112,15 +120,13 @@ module eth_phy_10g_block_lock_tb;
     //----------------------------
     // Casos de prueba
     //----------------------------
-    integer i;
-    `define CASE_1
 
-    initial begin
-            
-        // Envia 64 validos + 1 invalido. block_lock se mantiene en True
-        `ifdef CASE_1
-                serdes_rx_hdr <= 2'h1;
-                #1300;
+    // Envia 64 validos + 1 invalido. block_lock se mantiene en True
+    `ifdef CASE_1
+        initial begin
+
+            serdes_rx_hdr <= 2'h1;
+            #1300;
                 
             for(i = 0; i < 5; i = i+1) begin
                 serdes_rx_hdr <= 2'h0;
@@ -129,10 +135,15 @@ module eth_phy_10g_block_lock_tb;
                 #1260;
             end
 
-        // Envia 64 validos + 15 invalido + resto validos. block_lock se mantiene en True
-        `elsif CASE_2
-                serdes_rx_hdr <= 2'h1;
-                #1300;
+            $finish;
+        end
+
+    // Envia 64 validos + 15 invalido + resto validos. block_lock se mantiene en True
+    `elsif CASE_2
+        initial begin
+
+            serdes_rx_hdr <= 2'h1;
+            #1300;
                 
             for(i = 0; i < 5; i = i+1) begin
                 serdes_rx_hdr <= 2'h0;
@@ -141,8 +152,13 @@ module eth_phy_10g_block_lock_tb;
                 #1000;
             end
             
-        // Envia 63 validos + 1 invalido. block_lock se mantiene en False
-        `elsif CASE_3
+            $finish;
+        end
+        
+    // Envia 63 validos + 1 invalido. block_lock se mantiene en False
+    `elsif CASE_3
+        initial begin
+
             for(i = 0; i < 5; i = i+1) begin
                 serdes_rx_hdr <= 2'h1;
                 #1280
@@ -151,9 +167,14 @@ module eth_phy_10g_block_lock_tb;
                 serdes_rx_hdr <= 2'h1;  // Para compensar el tiempo de reset del contador
                 #140;
             end
+            
+            $finish;
+        end
 
-        // Envia 64 validos + 15 invalido + 48 validos + 1 invalido. block_lock cambia a True y luego a False 
-        `elsif CASE_4
+    // Envia 64 validos + 15 invalido + 48 validos + 1 invalido. block_lock cambia a True y luego a False 
+    `elsif CASE_4
+        initial begin
+
             for(i = 0; i < 5; i = i+1) begin
                 serdes_rx_hdr <= 2'h1;
                 #1300;
@@ -166,11 +187,16 @@ module eth_phy_10g_block_lock_tb;
                 serdes_rx_hdr <= 2'h1;  // Para compensar el tiempo de reset del contador
                 #140;
             end
+            
+            $finish;
+        end
 
-        // Envia 64 validos + 16 invalidos + 7 validos + 1 invalido. block_lock cambia a True y luego a False
-        `elsif CASE_5
-                serdes_rx_hdr <= 2'h1;
-                #1300;
+    // Envia 64 validos + 16 invalidos + 7 validos + 1 invalido. block_lock cambia a True y luego a False
+    `elsif CASE_5
+        initial begin
+            
+            serdes_rx_hdr <= 2'h1;
+            #1300;
                 
             for(i = 0; i < 5; i = i+1) begin
                 serdes_rx_hdr <= 2'h0;
@@ -182,11 +208,26 @@ module eth_phy_10g_block_lock_tb;
                 serdes_rx_hdr <= 2'h1;
                 #1280;
             end
+            
+            $finish;
+        end
 
-        `endif
+    // Envia headers aleatorios      
+    `elsif CASE_6
+        always@(posedge rx_clk) begin
+            
+            invalid_chance = $urandom_range(BER_RANGE);
 
-        $finish;
-    end
+            if (invalid_chance <= BER)
+                serdes_rx_hdr <= 2'h0;
+            else
+                serdes_rx_hdr <= 2'h1;
+        end
+
+        initial
+            #10000 $finish;
+
+    `endif
        
     //----------------------------
     // Instanciacion del modulo bajo prueba
