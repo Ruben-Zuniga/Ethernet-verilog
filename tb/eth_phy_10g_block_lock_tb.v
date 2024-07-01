@@ -113,12 +113,12 @@ module eth_phy_10g_block_lock_tb;
     // Casos de prueba
     //----------------------------
     integer i;
-    `define CASE_4_INVALID
+    `define CASE_1
 
     initial begin
             
-        // Envia 64 validos + 1 invalido
-        `ifdef CASE_1_VALID
+        // Envia 64 validos + 1 invalido. block_lock se mantiene en True
+        `ifdef CASE_1
                 serdes_rx_hdr <= 2'h1;
                 #1300;
                 
@@ -128,20 +128,9 @@ module eth_phy_10g_block_lock_tb;
                 serdes_rx_hdr <= 2'h1;
                 #1260;
             end
-            
-        // Envia 63 validos + 1 invalido
-        `elsif CASE_1_INVALID
-            for(i = 0; i < 5; i = i+1) begin
-                serdes_rx_hdr <= 2'h1;
-                #1280
-                serdes_rx_hdr <= 2'h0;
-                #20;
-                serdes_rx_hdr <= 2'h1;  // Para compensar el tiempo de reset del contador
-                #140;
-            end
 
-        // Envia 64 validos + 15 invalido + resto validos
-        `elsif CASE_2_INVALID
+        // Envia 64 validos + 15 invalido + resto validos. block_lock se mantiene en True
+        `elsif CASE_2
                 serdes_rx_hdr <= 2'h1;
                 #1300;
                 
@@ -151,9 +140,20 @@ module eth_phy_10g_block_lock_tb;
                 serdes_rx_hdr <= 2'h1;
                 #1000;
             end
+            
+        // Envia 63 validos + 1 invalido. block_lock se mantiene en False
+        `elsif CASE_3
+            for(i = 0; i < 5; i = i+1) begin
+                serdes_rx_hdr <= 2'h1;
+                #1280
+                serdes_rx_hdr <= 2'h0;
+                #20;
+                serdes_rx_hdr <= 2'h1;  // Para compensar el tiempo de reset del contador
+                #140;
+            end
 
-        // Envia 64 validos + 15 invalido + 48 validos + 1 invalido
-        `elsif CASE_3_INVALID
+        // Envia 64 validos + 15 invalido + 48 validos + 1 invalido. block_lock cambia a True y luego a False 
+        `elsif CASE_4
             for(i = 0; i < 5; i = i+1) begin
                 serdes_rx_hdr <= 2'h1;
                 #1300;
@@ -167,8 +167,8 @@ module eth_phy_10g_block_lock_tb;
                 #140;
             end
 
-        // Envia 64 validos + 16 invalidos + 7 validos + 1 invalido
-        `elsif CASE_4_INVALID
+        // Envia 64 validos + 16 invalidos + 7 validos + 1 invalido. block_lock cambia a True y luego a False
+        `elsif CASE_5
                 serdes_rx_hdr <= 2'h1;
                 #1300;
                 
