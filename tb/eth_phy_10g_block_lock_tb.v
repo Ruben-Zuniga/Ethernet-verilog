@@ -22,7 +22,7 @@ module eth_phy_10g_block_lock_tb;
     parameter   COUNT_125US = 125;
 
     //----------------------------
-    // Señales
+    // SeÃ±ales
     //----------------------------
 
     // Clocks y resets
@@ -73,6 +73,9 @@ module eth_phy_10g_block_lock_tb;
     //----------------------------
     always #10 rx_clk = ~rx_clk;
     always #10 tx_clk = ~tx_clk;
+    
+    always@(posedge tx_clk)
+        serdes_rx_data <= serdes_tx_data;
 
     always@(*) begin
         ber_count        = dut.eth_phy_10g_rx_inst.eth_phy_10g_rx_if_inst.eth_phy_10g_rx_ber_mon_inst.ber_count_reg;
@@ -110,89 +113,74 @@ module eth_phy_10g_block_lock_tb;
     // Casos de prueba
     //----------------------------
     integer i;
-    `define CASE_2_VALID
+    `define CASE_4_INVALID
 
     initial begin
             
-        // Envia 63 validos + 1 invalido
-        `ifdef CASE_1_VALID
-
-            for(i = 0; i < 3; i = i+1) begin
-                // Envia 63 bloques validos
-                serdes_rx_hdr <= 2'h2;
-                #1280;
-                // Envia 1 bloque invalido
-                serdes_rx_hdr <= 2'h0;
-                #20;
-            end
-
-        // Envia 62 validos + 1 invalido + 1 valido
-        `elsif CASE_2_VALID
-            for(i = 0; i < 3; i = i+1) begin
-                // Envia 62 bloques validos
-                serdes_rx_hdr <= 2'h2;
-                #1260;
-                // Envia 1 bloque invalido
-                serdes_rx_hdr <= 2'h0;
-                #20;
-                // Envia 1 bloque valido
-                serdes_rx_hdr <= 2'h2;
-                #20;
-            end
-
         // Envia 64 validos + 1 invalido
-        `elsif CASE_3_VALID
-            for(i = 0; i < 5; i = i+1) begin
-                // Envia 64 bloques validos
-                serdes_rx_hdr <= 2'h2;
+        `ifdef CASE_1_VALID
+                serdes_rx_hdr <= 2'h1;
                 #1300;
-                // Envia 1 bloque invalido
+                
+            for(i = 0; i < 5; i = i+1) begin
                 serdes_rx_hdr <= 2'h0;
                 #20;
+                serdes_rx_hdr <= 2'h1;
+                #1260;
             end
-
-        // Envia 64 validos, 15 invalido, resto validos
+            
+        // Envia 63 validos + 1 invalido
         `elsif CASE_1_INVALID
             for(i = 0; i < 5; i = i+1) begin
-                // Envia 64 bloques validos
-                serdes_rx_hdr <= 2'h2;
-                #1270;
-                // Envia 15 bloques invalidos
-                serdes_rx_hdr <= 2'h0;
-                #300;
-            end
-
-        // Envia 64 validos, 15 invalido, 48 validos, 1 invalido
-        `elsif CASE_2_INVALID
-            for(i = 0; i < 5; i = i+1) begin
-                // Envia 64 bloques validos
-                serdes_rx_hdr <= 2'h2;
-                #1270;
-                // Envia 15 bloques invalidos
-                serdes_rx_hdr <= 2'h0;
-                #300;
-                // Envia 48 bloques validos
-                serdes_rx_hdr <= 2'h2;
-                #960;
-                // Envia 1 bloques invalido
+                serdes_rx_hdr <= 2'h1;
+                #1280
                 serdes_rx_hdr <= 2'h0;
                 #20;
+                serdes_rx_hdr <= 2'h1;  // Para compensar el tiempo de reset del contador
+                #140;
             end
 
+        // Envia 64 validos + 15 invalido + resto validos
+        `elsif CASE_2_INVALID
+                serdes_rx_hdr <= 2'h1;
+                #1300;
+                
+            for(i = 0; i < 5; i = i+1) begin
+                serdes_rx_hdr <= 2'h0;
+                #300;
+                serdes_rx_hdr <= 2'h1;
+                #1000;
+            end
+
+        // Envia 64 validos + 15 invalido + 48 validos + 1 invalido
         `elsif CASE_3_INVALID
             for(i = 0; i < 5; i = i+1) begin
-                // Envia 64 bloques validos
-                serdes_rx_hdr <= 2'h2;
-                #1270;
-                // Envia 16 bloques invalidos
+                serdes_rx_hdr <= 2'h1;
+                #1300;
                 serdes_rx_hdr <= 2'h0;
-                #320;
-                // Envia 8 bloques validos
-                serdes_rx_hdr <= 2'h2;
-                #180;
-                // Envia 1 bloques invalido
+                #300;
+                serdes_rx_hdr <= 2'h1;
+                #960;
                 serdes_rx_hdr <= 2'h0;
                 #20;
+                serdes_rx_hdr <= 2'h1;  // Para compensar el tiempo de reset del contador
+                #140;
+            end
+
+        // Envia 64 validos + 16 invalidos + 7 validos + 1 invalido
+        `elsif CASE_4_INVALID
+                serdes_rx_hdr <= 2'h1;
+                #1300;
+                
+            for(i = 0; i < 5; i = i+1) begin
+                serdes_rx_hdr <= 2'h0;
+                #320;
+                serdes_rx_hdr <= 2'h1;
+                #140;
+                serdes_rx_hdr <= 2'h0;
+                #20;
+                serdes_rx_hdr <= 2'h1;
+                #1280;
             end
 
         `endif
