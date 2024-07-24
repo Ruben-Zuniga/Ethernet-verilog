@@ -25,10 +25,10 @@ module eth_phy_10g_block_lock_tb;
     // Parametros del testbench
     //----------------------------
     `define CASE_6
-    integer BER = 25;
-    integer BER_RANGE = 1000;    // BER = 2,5e-2
-    integer invalid_chance;
-    integer i;
+    localparam  BER     = 0.01;
+    integer     seed    = 0;
+    integer     i;
+    real        invalid_prob;
 
     //----------------------------
     // Puertos
@@ -216,22 +216,31 @@ module eth_phy_10g_block_lock_tb;
     `elsif CASE_6
         always@(posedge rx_clk) begin
             
-            invalid_chance = $urandom_range(BER_RANGE);
+            seed <= seed + 1;
+            invalid_prob <= $urandom(seed) / (2.0**32-1);
 
-            if (invalid_chance <= BER)
-                serdes_rx_hdr <= 2'h0;
+            if (invalid_prob <= BER)
+                serdes_rx_hdr <= 2'b00;
             else
-                serdes_rx_hdr <= 2'h1;
+                serdes_rx_hdr <= 2'b01;
+
+            if (rx_block_lock) begin
+                $display("Fin de la simulacion: El modulo fue enganchado con exito");
+                $finish;
+            end
         end
 
-        initial
-            #10000 $finish;
+        initial begin
+            #10000  $display("Fin de la simulacion: El modulo no pudo ser enganchado");
+                    $finish;
+        end
 
     `endif
        
     //----------------------------
     // Instanciacion del modulo bajo prueba
     //----------------------------
+    
     eth_phy_10g #(
         .DATA_WIDTH(DATA_WIDTH),
         .CTRL_WIDTH(CTRL_WIDTH),
