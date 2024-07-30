@@ -67,10 +67,12 @@ always @(*) begin
 
     //serdes_rx_bitslip_next          = serdes_rx_bitslip_reg;
 
-    /*  ej: sh_pos = 0 y DATA_WIDTH = 2     ej: sh_pos = 3 y DATA_WIDTH = 2
-        concat  = [11111111] (7:0)          concat  = [00011111] (7:0)
-        hdr     = [00000011] (1:0)          hdr     = [00000011] (4:3)
-        data    = [00001100] (3:2)          data    = [00001100] (6:5)
+    /*
+        ej: sh_pos = 0, HDR_WIDTH = 2 y DATA_WIDTH = 2      ej: sh_pos = 3, HDR_WIDTH = 2 y DATA_WIDTH = 2
+        concat_reg  = [76543210]                            concat_reg  = [76543210]
+        concat_next = [76543210]                            concat_next = [00076543]
+        hdr         = [xxxxxx10]                            hdr         = [xxxxxx43]
+        data        = [xxxx32xx]                            data        = [xxxx65xx]
     */
     serdes_rx_concat_next           = serdes_rx_concat_reg >> sh_pos;
     serdes_rx_hdr_next              = serdes_rx_concat_next[HDR_WIDTH-1:0];
