@@ -65,7 +65,7 @@ localparam                          INVALID_SH      = 7'b0100000            ;
 localparam                          SLIP            = 7'b1000000            ;
 
 reg             [SH_POS_WIDTH-1:0]  sh_pos                              ;   // Posicion de testeo
-reg                                 serdes_rx_bitslip_reg               ;
+reg                                 serdes_rx_bitslip                   ;
 reg                                 rx_block_lock                       ;
 
 reg             [FRAME_WIDTH-1:0]   serdes_rx_reg                       ;
@@ -94,31 +94,65 @@ always @(*) begin
     serdes_rx_hdr_next              = serdes_rx_concat_next[HDR_WIDTH-1   : 0]          ;
     serdes_rx_data_next             = serdes_rx_concat_next[FRAME_WIDTH-1 : HDR_WIDTH]  ;
 
-    if(serdes_rx_hdr_next[0] ^ serdes_rx_hdr_next[1])   // Si hdr es 2'b01 o 2'b10
-        sh_valid = 1'b1;
-    else
-        sh_valid = 1'b0;
+
+    case (state)
+        LOCK_INIT: begin
+            rx_block_lock               = 1'b0                                          ;
+        end
+
+        RESET_CNT: begin
+            sh_pos                      = {SH_POS_WIDTH{1'b0}}                          ;
+            serdes_rx_bitslip           = 1'b0                                          ;
+            sh_cnt                      = 6'b0                                          ;
+            sh_invalid_cnt              = 4'b0                                          ;
+            
+        end
+
+        TEST_SH: begin
+            if(serdes_rx_hdr_next[0] ^ serdes_rx_hdr_next[1])   // Si hdr es 2'b01 o 2'b10
+                sh_valid                = 1'b1                                          ;
+            else
+                sh_valid                = 1'b0                                          ;
+            
+        end
+
+        GOOD_64: begin
+            rx_block_lock               = 1'b1                                          ;
+            
+        end
+
+        SLIP: begin
+            rx_block_lock               = 1'b0                                          ;
+            serdes_rx_bitslip           = 1'b1                                          ;
+            
+        end
+
+    endcase
 end
 
 always @(posedge clk) begin
 
     if (rst) begin
-        sh_pos                          <= {SH_POS_WIDTH{1'b0}}                         ;
-        state                           <= LOCK_INIT                                    ;
+
+        case (state)
+            LOCK_INIT: 
+                state                   <= RESET_CNT                                    ;
+            
+            RESET_CNT: 
+                state                   <= LOCK_INIT                                    ;
+            
+            default: 
+                state                   <= LOCK_INIT                                    ;
+
+        endcase
 
     end else
         case (state)
             LOCK_INIT: begin
-                rx_block_lock           <= 1'b0                                         ;
-
                 state                   <= RESET_CNT                                    ;
             end
 
             RESET_CNT: begin
-                serdes_rx_bitslip_reg   <= 1'b0                                         ;
-                sh_cnt                  <= 6'b0                                         ;
-                sh_invalid_cnt          <= 4'b0                                         ;
-
                 state                   <= TEST_SH                                      ;
             end
 
@@ -144,8 +178,6 @@ always @(posedge clk) begin
             end
 
             GOOD_64: begin
-                rx_block_lock         <= 1'b1                                         ;
-
                 state                   <= RESET_CNT                                    ;
             end
 
@@ -163,13 +195,10 @@ always @(posedge clk) begin
             end
 
             SLIP: begin
-                rx_block_lock         <= 1'b0                                         ;
-                serdes_rx_bitslip_reg   <= 1'b1                                         ;
-
                 if(sh_pos == FRAME_WIDTH)
-                    sh_pos              <= {SH_POS_WIDTH{1'b0}};
+                    sh_pos              <= {SH_POS_WIDTH{1'b0}}                         ;
                 else
-                    sh_pos              <= sh_pos + 1;
+                    sh_pos              <= sh_pos + 1                                   ;
             
                 //if(slip_done)
                     state               <= RESET_CNT                                    ;
@@ -213,7 +242,7 @@ end
 
 assign o_serdes_rx_hdr      = serdes_rx_hdr_reg     ;
 assign o_serdes_rx_data     = serdes_rx_data_reg    ;
-assign o_serdes_rx_bitslip  = serdes_rx_bitslip_reg ;
+assign o_serdes_rx_bitslip  = serdes_rx_bitslip     ;
 assign o_rx_block_lock      = rx_block_lock         ;
 
 endmodule
