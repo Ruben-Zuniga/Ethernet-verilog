@@ -1,61 +1,61 @@
 `include "eth_phy_10g.v"
-
-`resetall
 `timescale 1us / 100ns
-`default_nettype none
 
 module eth_phy_10g_tb;
 
+  // Parameters
+    localparam  DATA_WIDTH            = 64;
+    localparam  CTRL_WIDTH            = (DATA_WIDTH/8);
+    localparam  HDR_WIDTH             = 2;
+    localparam  FRAME_WIDTH           = DATA_WIDTH + HDR_WIDTH;
+    localparam  BIT_REVERSE           = 0;
+    localparam  SCRAMBLER_DISABLE     = 1;
+    localparam  PRBS31_ENABLE         = 0;
+    localparam  TX_SERDES_PIPELINE    = 0;
+    localparam  RX_SERDES_PIPELINE    = 0;
+    localparam  BITSLIP_HIGH_CYCLES   = 1;
+    localparam  BITSLIP_LOW_CYCLES    = 8;
+    localparam  COUNT_125US           = 125;
+
+    //Ports
+    reg                       rx_clk;
+    reg                       rx_rst;
+    reg                       tx_clk;
+    reg                       tx_rst;
+    reg   [DATA_WIDTH-1:0]    xgmii_txd;
+    reg   [CTRL_WIDTH-1:0]    xgmii_txc;
+    wire  [DATA_WIDTH-1:0]    xgmii_rxd;
+    wire  [CTRL_WIDTH-1:0]    xgmii_rxc;
+    wire  [DATA_WIDTH-1:0]    serdes_tx_data;
+    wire  [HDR_WIDTH-1:0]     serdes_tx_hdr;
+    reg   [FRAME_WIDTH-1:0]   serdes_rx;
+    wire                      serdes_rx_bitslip;
+    wire                      serdes_rx_reset_req;
+    wire                      tx_bad_block;
+    wire  [6:0]               rx_error_count;
+    wire                      rx_bad_block;
+    wire                      rx_sequence_error;
+    wire                      rx_block_lock;
+    wire                      o_rx_block_lock;
+    wire                      rx_high_ber;
+    wire                      rx_status;
+    reg                       cfg_tx_prbs31_enable;
+    reg                       cfg_rx_prbs31_enable;
+
     //----------------------------
-    // Parametros del modulo
+    // Otras senales/variables
     //----------------------------
     
-    parameter DATA_WIDTH = 64;
-    parameter CTRL_WIDTH = (DATA_WIDTH/8);
-    parameter HDR_WIDTH = 2;
-    parameter PRBS31_ENABLE = 0;
-    parameter SCRAMBLER_DISABLE = 0;
-    parameter BIT_REVERSE = 0;
-    parameter TX_SERDES_PIPELINE = 0;
-    parameter RX_SERDES_PIPELINE = 0;
-    parameter BITSLIP_HIGH_CYCLES = 1;
-    parameter BITSLIP_LOW_CYCLES = 8;
-    parameter COUNT_125US = 125;
-    
-    //----------------------------
-    // Definicion de senales
-    //----------------------------
-    
-    reg rx_clk, rx_rst, tx_clk, tx_rst;
-    reg [DATA_WIDTH-1:0] xgmii_txd;
-    reg [CTRL_WIDTH-1:0] xgmii_txc;
-    wire [DATA_WIDTH-1:0] xgmii_rxd;
-    wire [CTRL_WIDTH-1:0] xgmii_rxc;
-    wire [DATA_WIDTH-1:0] serdes_tx_data;
-    wire [HDR_WIDTH-1:0] serdes_tx_hdr;
-    reg [DATA_WIDTH-1:0] serdes_rx_data;
-    reg [HDR_WIDTH-1:0] serdes_rx_hdr;
-    wire serdes_rx_bitslip, serdes_rx_reset_req;
-    wire tx_bad_block;
-    wire [6:0] rx_error_count;
-    wire rx_bad_block, rx_sequence_error, rx_block_lock, rx_high_ber, rx_status;
-    reg cfg_tx_prbs31_enable, cfg_rx_prbs31_enable;
-    
-    //----------------------------
-    // Otras señales/variables
-    //----------------------------
-    
-    reg [5:0] sh_cnt;
-    
-    integer i;
-    integer j;
+    reg     [5:0] sh_cnt;
+    integer       i = 0;
+    integer       j = 0;
     
     //----------------------------
     // Definir prueba. COLOCAR UNO PARA LOS DATOS Y UNO PARA LOS HEADERS
     //----------------------------
     
     `define FIXED_DATA
-    `define STRONGLY_CORRUPTED
+    `define VALID_HDR
     
     /*
     Datos:
@@ -79,53 +79,11 @@ module eth_phy_10g_tb;
     // Loopback de los datos
     //----------------------------
     
-    always @ (posedge tx_clk) begin
-        if (!tx_rst) begin
-            serdes_rx_data <= serdes_tx_data;
+    always @ (posedge rx_clk) begin
+        if (!rx_rst) begin
+            serdes_rx <= {serdes_tx_data, serdes_tx_hdr};
         end
     end
-    
-    //----------------------------
-    // Loopback de los headers
-    //----------------------------
-    
-    `ifdef VALID_HDR
-    
-        always @ (posedge tx_clk) begin
-        
-            if (!tx_rst && !rx_rst) begin
-                serdes_rx_hdr <= serdes_tx_hdr;
-            end
-            
-        end
-        
-    `elsif INVALID_HDR
-    
-        initial begin
-            serdes_rx_hdr = 2'b00;
-        end
-        
-    `elsif LIGHTLY_CORRUPTED
-    
-        always @ (posedge tx_clk) begin
-        
-            if (!tx_rst && !rx_rst) begin
-                serdes_rx_hdr <= serdes_tx_hdr;
-            end
-            
-        end
-        
-    `elsif STRONGLY_CORRUPTED
-    
-        always @ (posedge tx_clk) begin
-        
-            if (!tx_rst && !rx_rst) begin
-                serdes_rx_hdr <= serdes_tx_hdr;
-            end
-            
-        end
-        
-    `endif
     
     //----------------------------
     // Patrones de prueba
@@ -133,7 +91,7 @@ module eth_phy_10g_tb;
     
     `ifdef FIXED_DATA
         
-        reg [DATA_WIDTH-1:0] test_pattern [0:5];
+        reg [DATA_WIDTH-1:0] test_pattern [5:0];
     
         initial begin
             test_pattern[0] = 64'hFFFFFFFFFFFFFFFF; // Todos 1
@@ -156,15 +114,12 @@ module eth_phy_10g_tb;
     
     `elsif RANDOM_DATA
     
-        integer seed;
+        integer seed1 = 32'd1;
+        integer seed2 = 32'd2;
         reg [DATA_WIDTH-1:0] test_pattern;
-    
-        initial begin
-            seed = 32'h1;
-        end
        
-       always begin
-            test_pattern = {{$random(seed), $random}};
+        always begin
+            test_pattern = {{$random(seed1), $random(seed2)}};
             #100;
         end
         
@@ -182,11 +137,11 @@ module eth_phy_10g_tb;
     //----------------------------
     
     always @(posedge rx_clk) begin
-        sh_cnt = dut.eth_phy_10g_rx_inst.eth_phy_10g_rx_if_inst.eth_phy_10g_rx_frame_sync_inst.sh_count_reg;
+        sh_cnt <= dut.eth_phy_10g_rx_inst.eth_phy_10g_rx_if_inst.eth_phy_10g_rx_frame_sync_inst.sh_count_reg;
     end
     
     //----------------------------
-    // Testbench
+    // Testbench Tx
     //----------------------------
     
     initial begin
@@ -196,81 +151,78 @@ module eth_phy_10g_tb;
         $display("Ejecutando simulacion...");
     
         // Configurar generacion de PRBS31
-        if(PRBS31_ENABLE) begin
+        if(PRBS31_ENABLE)
             cfg_tx_prbs31_enable = 1;
-            cfg_rx_prbs31_enable = 1;
-        end else begin
+        else
             cfg_tx_prbs31_enable = 0;
-            cfg_rx_prbs31_enable = 0;
-        end
     
         // Inicializar clock y reset
-        rx_clk = 0;
         tx_clk = 0;
-        rx_rst = 1;
         tx_rst = 1;
         
         // Inicializar XGMII
         xgmii_txd = test_pattern[0];
-        xgmii_txc = 8'hFF;  // Control
-        //xgmii_txc = 8'h00;  // Datos 
+        xgmii_txc = 8'hFF;    // Control
+        //xgmii_txc = 8'h00;    // Datos
         
-        #10
-        rx_rst = 0;
+        #10;
+        @(posedge tx_clk);
         tx_rst = 0;
         
-        `ifdef VALID_HDR
-            #2400;
-        
-        `elsif INVALID_HDR
-            #2400;
-        
-        `elsif LIGHTLY_CORRUPTED
-            
-            // Forzar errores de header cada cierto tiempo
-            for (i = 0; i < 6; i = i + 1) begin 
-                
-                if(rx_block_lock) begin
-                    serdes_rx_hdr = 2'b00;
-                end
-                #500;
-                
-            end
-            
-        `elsif STRONGLY_CORRUPTED
-                
-            // Forzar errores de header cada cierto tiempo
-            for (i = 0; i < 20; i = i + 1) begin
-            
-                serdes_rx_hdr = 2'b00;
-                #50;
-                
-            end
-            
-        `endif
-        
+        @(posedge rx_rst);
+        tx_rst = 1;
+        #10;
         
         $display("Tiempo de ejecucion: %0t ps", $realtime);
         $finish;
     end
     
     //----------------------------
+    // Testbench Rx
+    //----------------------------
+
+    initial begin
+        // Configurar generacion de PRBS31
+        if(PRBS31_ENABLE)
+            cfg_rx_prbs31_enable = 1;
+        else
+            cfg_rx_prbs31_enable = 0;
+
+        // Inicializar clock y reset
+        rx_clk = 0;
+        rx_rst = 1;
+        
+        // Inicializar serdes
+        serdes_rx = {FRAME_WIDTH{1'b0}};
+        
+        #10;
+        @(posedge rx_clk);
+        rx_rst = 0;
+
+        #2400;
+        @(posedge rx_clk);
+        rx_rst = 1;
+    
+    end
+    
+    //----------------------------
     // Instanciacion del modulo bajo prueba
     //----------------------------
-    
-    eth_phy_10g #(
+    eth_phy_10g # (
         .DATA_WIDTH(DATA_WIDTH),
         .CTRL_WIDTH(CTRL_WIDTH),
         .HDR_WIDTH(HDR_WIDTH),
-        .PRBS31_ENABLE(PRBS31_ENABLE),
-        .SCRAMBLER_DISABLE(SCRAMBLER_DISABLE),
+        .FRAME_WIDTH(FRAME_WIDTH),
         .BIT_REVERSE(BIT_REVERSE),
+        .SCRAMBLER_DISABLE(SCRAMBLER_DISABLE),
+        .PRBS31_ENABLE(PRBS31_ENABLE),
         .TX_SERDES_PIPELINE(TX_SERDES_PIPELINE),
         .RX_SERDES_PIPELINE(RX_SERDES_PIPELINE),
         .BITSLIP_HIGH_CYCLES(BITSLIP_HIGH_CYCLES),
         .BITSLIP_LOW_CYCLES(BITSLIP_LOW_CYCLES),
         .COUNT_125US(COUNT_125US)
-    ) dut (
+    )
+    dut (
         .rx_clk(rx_clk),
         .rx_rst(rx_rst),
         .tx_clk(tx_clk),
@@ -281,8 +233,7 @@ module eth_phy_10g_tb;
         .xgmii_rxc(xgmii_rxc),
         .serdes_tx_data(serdes_tx_data),
         .serdes_tx_hdr(serdes_tx_hdr),
-        .serdes_rx_data(serdes_rx_data),
-        .serdes_rx_hdr(serdes_rx_hdr),
+        .serdes_rx(serdes_rx),
         .serdes_rx_bitslip(serdes_rx_bitslip),
         .serdes_rx_reset_req(serdes_rx_reset_req),
         .tx_bad_block(tx_bad_block),
@@ -290,6 +241,7 @@ module eth_phy_10g_tb;
         .rx_bad_block(rx_bad_block),
         .rx_sequence_error(rx_sequence_error),
         .rx_block_lock(rx_block_lock),
+        .o_rx_block_lock(o_rx_block_lock),
         .rx_high_ber(rx_high_ber),
         .rx_status(rx_status),
         .cfg_tx_prbs31_enable(cfg_tx_prbs31_enable),
