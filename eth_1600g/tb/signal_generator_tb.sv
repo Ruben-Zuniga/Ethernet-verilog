@@ -1,5 +1,5 @@
 /*
-    Testbench del generador de MII hecho por mi
+    Testbench del generador de MII
 */
 
 module signal_generator_tb();
@@ -20,7 +20,18 @@ module signal_generator_tb();
 
     // Declare variables used in logging
     int                                 rand_num                                    ;
-    int                                 i                                           ;   // Loop variable
+    
+    // MII codes
+    localparam TXD_IDLE = 8'h07;
+    localparam TXD_SEQUENCE = 8'h9C;
+    localparam TXD_START = 8'hFB;
+    localparam TXD_TERMINATE = 8'hFD;
+    localparam TXD_ERROR = 8'hFE;
+
+    // Inter-frame function
+    function logic [DATA_WIDTH-1:0] inter_frame;
+        inter_frame = {8{TXD_IDLE}};
+    endfunction
 
     // Clock generation
     always #5 clk = ~clk; // 100MHz clock
