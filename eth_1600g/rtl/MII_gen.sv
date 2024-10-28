@@ -19,11 +19,10 @@ module EthernetFrameGenerator
 (
     input  logic        clk                 ,   //! Clock input
     input  logic        i_rst               ,   //! Asynchronous reset
+    input  logic        i_start                 //! Signal to start frame transmission
     input  logic [7:0]  i_interrupt         ,   //! Interrupt the frame into different scenarios
     output logic [7:0]  o_tx_data           ,   //! Transmitted data (8 bits per cycle)
-    output logic [7:0]  o_tx_ctrl           ,   //! Transmit control signal (indicates valid data)
-    output logic        o_tx_clk            ,   //! Transmit clock
-    input  logic        i_start                 //! Signal to start frame transmission
+    output logic [7:0]  o_tx_ctrl               //! Transmit control signal (indicates valid data)
 );
 
     // Parameters for frame sections
@@ -64,8 +63,8 @@ module EthernetFrameGenerator
     logic [6:0] next_counter;
 
     // TXC
-    logic [7:0] ctrl_out;
-    logic [7:0] next_ctrl_out;
+    logic [7:0] tx_ctrl;
+    logic [7:0] next_tx_ctrl;
 
     // Random
     int random_num;
@@ -105,7 +104,7 @@ module EthernetFrameGenerator
                     next_tx_data = SFD_CODE                                         ;
                     next_counter = counter + 1                                      ;
                     next_state   = SFD                                              ;
-                end else begin                                  
+                end else begin
                     next_state = DATA                                               ;
                     next_counter = 0                                                ;
                 end
@@ -117,18 +116,6 @@ module EthernetFrameGenerator
                         next_tx_data = 8'h00                                        ;    
                     end else begin
                         next_tx_data = DATA_CHAR_PATTERN                            ;
-                        /*
-                        random_num = $urandom_range(0, 99)                          ;
-                        if (random_num < DATA_CHAR_PROBABILITY) begin       
-                            // Data character       
-                            next_tx_data = DATA_CHAR_PATTERN                        ;
-                            next_ctrl_out = {1'b0, ctrl_out[7:1]}                   ;
-                        end else begin      
-                            // Control character        
-                            next_tx_data = CTRL_CHAR_PATTERN                        ;
-                            next_ctrl_out = {1'b0, ctrl_out[7:1]}                   ;
-                        end
-                        */     
                     end
                     next_counter = counter + 1                                      ;
                     next_state   = DATA                                             ;
@@ -152,16 +139,16 @@ module EthernetFrameGenerator
     end
 
     // Control de transmisión de frames
-    always_ff @(posedge tx_clk or posedge reset) begin
+    always_ff @(posedge tx_clk or posedge i_rst) begin
         if (i_rst) begin 
             tx_data     <= 8'd0                                                     ;
-            ctrl_reg    <= 8'd0                                                     ;
+            tx_ctrl    <= 8'd0                                                     ;
             counter     <= 0                                                        ;
             state       <= IDLE                                                     ;
         end
         else begin
             tx_data <= next_tx_data                                                 ;
-            ctrl_out <= next_ctrl_out                                               ;
+            tx_ctrl <= next_tx_ctrl                                               ;
             counter <= next_counter                                                 ;
             state <= next_state                                                     ;
         end
@@ -169,8 +156,8 @@ module EthernetFrameGenerator
     end
     
     // Asignar los datos transmitidos y la señal de control
-    assign o_tx_data = tx_data ;
-    assign o_tx_ctrl = ctrl_out;
+    assign o_tx_data = tx_data;
+    assign o_tx_ctrl = tx_ctrl;
     //assign tx_data = (transmitting && frame_index < FRAME_SIZE) ? frame[frame_index] : 8'd0;
     //assign tx_ctrl = (transmitting && frame_index < FRAME_SIZE) ? 1'b1 : 1'b0; // Control signal indicating valid data
     
